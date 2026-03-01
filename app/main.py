@@ -118,6 +118,7 @@ async def submit_job(
                            'message': f'Uploading {uploaded_size//1024//1024}MB...'}, f)
 
     params = {
+        'model_type': model_type,
         'window_size': window_size, 'overlap_pct': overlap_pct,
         'score_thresh': score_thresh, 'nms_iou': nms_iou,
         'polarization': polarization, 'input_format': input_format,
