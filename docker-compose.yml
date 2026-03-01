@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATA_DIR=/data
+      - MODELS_DIR=/models
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATA_DIR=/data
+      - MODELS_DIR=/models
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

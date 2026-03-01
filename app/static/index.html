@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SAR Ship Detector</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f1117; color: #e0e0e0; }
+  .container { display: flex; height: 100vh; }
+  .sidebar { width: 340px; min-width: 340px; background: #1a1d27; padding: 20px;
+             overflow-y: auto; border-right: 1px solid #2a2d3a; }
+  .preview { flex: 1; background: #0a0c12; display: flex; align-items: center;
+             justify-content: center; position: relative; overflow: hidden; }
+  h1 { font-size: 16px; color: #7c8cf8; margin-bottom: 20px; letter-spacing: 1px; }
+  h2 { font-size: 12px; color: #888; text-transform: uppercase; 
+       letter-spacing: 1px; margin: 16px 0 8px; }
+  .form-group { margin-bottom: 12px; }
+  label { font-size: 12px; color: #aaa; display: block; margin-bottom: 4px; }
+  input, select { width: 100%; background: #0f1117; border: 1px solid #2a2d3a;
+                  color: #e0e0e0; padding: 6px 10px; border-radius: 4px; font-size: 13px; }
+  input[type=range] { padding: 4px 0; cursor: pointer; }
+  .range-row { display: flex; align-items: center; gap: 8px; }
+  .range-row span { font-size: 12px; color: #7c8cf8; min-width: 36px; text-align: right; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; }
+  .checkbox-row input { width: auto; }
+  button { width: 100%; padding: 10px; border: none; border-radius: 4px; 
+           font-size: 14px; cursor: pointer; margin-top: 6px; }
+  .btn-primary { background: #7c8cf8; color: #fff; }
+  .btn-primary:hover { background: #6b7af0; }
+  .btn-primary:disabled { background: #3a3d4a; color: #666; cursor: not-allowed; }
+  .btn-danger  { background: #c0392b; color: #fff; }
+  .btn-download { background: #27ae60; color: #fff; }
+  .progress-bar { width: 100%; height: 6px; background: #2a2d3a; 
+                  border-radius: 3px; margin: 10px 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: #7c8cf8; transition: width 0.3s; }
+  .status-msg { font-size: 12px; color: #aaa; text-align: center; min-height: 18px; }
+  .drop-zone { width: 100%; padding: 20px; border: 2px dashed #2a2d3a;
+               border-radius: 8px; text-align: center; cursor: pointer;
+               transition: border-color 0.2s; font-size: 13px; color: #666; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: #7c8cf8; color: #aaa; }
+  .preview-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .no-preview { color: #333; font-size: 14px; }
+  .section { border-top: 1px solid #2a2d3a; padding-top: 12px; }
+  .results-count { font-size: 20px; font-weight: bold; color: #27ae60; text-align: center; }
+  .results-label { font-size: 12px; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h1>⚓ SAR Ship Detector</h1>
+
+    <!-- File upload -->
+    <div class="form-group">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div id="dropLabel">Drop GeoTIFF here or click to browse</div>
+      </div>
+      <input type="file" id="fileInput" accept=".tif,.tiff" style="display:none">
+    </div>
+
+    <!-- Model -->
+    <h2>Model</h2>
+    <div class="form-group">
+      <label>Model type</label>
+      <select id="modelType">
+        <option value="yolo">YOLO26s</option>
+        <option value="fasterrcnn">Faster R-CNN</option>
+      </select>
+    </div>
+
+    <!-- SAR params -->
+    <h2>SAR Parameters</h2>
+    <div class="form-group">
+      <label>Polarization</label>
+      <select id="polarization">
+        <option>VV</option><option>VH</option>
+        <option>HH</option><option>HV</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Input format</label>
+      <select id="inputFormat">
+        <option value="byte">Byte (0–255, SNAP/QGIS export)</option>
+        <option value="db">dB (sigma0)</option>
+        <option value="linear">Linear (sigma0)</option>
+      </select>
+    </div>
+
+    <!-- Detection params -->
+    <h2>Detection Parameters</h2>
+    <div class="form-group">
+      <label>Window size (px)</label>
+      <select id="windowSize">
+        <option value="512">512</option>
+        <option value="800" selected>800</option>
+        <option value="1024">1024</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Overlap %</label>
+      <div class="range-row">
+        <input type="range" id="overlapPct" min="0" max="0.5" step="0.05" value="0.25"
+               oninput="document.getElementById('overlapVal').textContent=(this.value*100).toFixed(0)+'%'">
+        <span id="overlapVal">25%</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Score threshold</label>
+      <div class="range-row">
+        <input type="range" id="scoreThresh" min="0.1" max="0.9" step="0.05" value="0.3"
+               oninput="document.getElementById('scoreVal').textContent=parseFloat(this.value).toFixed(2)">
+        <span id="scoreVal">0.30</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>NMS IoU</label>
+      <div class="range-row">
+        <input type="range" id="nmsIou" min="0.1" max="0.7" step="0.05" value="0.3"
+               oninput="document.getElementById('nmsVal').textContent=parseFloat(this.value).toFixed(2)">
+        <span id="nmsIou2">0.30</span>
+      </div>
+    </div>
+
+    <!-- Contrast enhancement -->
+    <h2 class="section">Contrast Enhancement</h2>
+    <div class="form-group">
+      <div class="checkbox-row">
+        <input type="checkbox" id="contrastEnabled" onchange="toggleContrast()">
+        <label for="contrastEnabled" style="margin:0">Enable contrast enhancement</label>
+      </div>
+    </div>
+    <div id="contrastParams" style="display:none">
+      <div class="form-group">
+        <label>Method</label>
+        <select id="contrastMethod">
+          <option value="percentile">Percentile stretch (recommended)</option>
+          <option value="minmax">Min-max stretch</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Low percentile</label>
+        <div class="range-row">
+          <input type="range" id="percLow" min="0" max="10" step="0.5" value="2"
+                 oninput="document.getElementById('percLowVal').textContent=this.value+'%'">
+          <span id="percLowVal">2%</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>High percentile</label>
+        <div class="range-row">
+          <input type="range" id="percHigh" min="90" max="100" step="0.5" value="98"
+                 oninput="document.getElementById('percHighVal').textContent=this.value+'%'">
+          <span id="percHighVal">98%</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Gamma (1.0 = no change, &lt;1 = brighter)</label>
+        <div class="range-row">
+          <input type="range" id="gamma" min="0.3" max="3.0" step="0.1" value="1.0"
+                 oninput="document.getElementById('gammaVal').textContent=parseFloat(this.value).toFixed(1)">
+          <span id="gammaVal">1.0</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="checkbox-row">
+          <input type="checkbox" id="clahe">
+          <label for="clahe" style="margin:0">CLAHE (best for ship visibility)</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <h2 class="section">Run</h2>
+    <button class="btn-primary" id="runBtn" onclick="submitJob()" disabled>
+      Run Detection
+    </button>
+    <button class="btn-danger" id="abortBtn" onclick="abortJob()" 
+            style="display:none; margin-top:6px">
+      Abort
+    </button>
+    <div class="progress-bar" id="progressBar" style="display:none">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+
+    <!-- Results -->
+    <div id="resultsSection" style="display:none; margin-top:16px; text-align:center">
+      <div class="results-count" id="resultsCount">—</div>
+      <div class="results-label">ships detected</div>
+      <button class="btn-download" onclick="downloadResult()" style="margin-top:10px">
+        Download GeoJSON
+      </button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview" id="preview">
+    <div class="no-preview">Upload a GeoTIFF to preview</div>
+  </div>
+</div>
+
+<script>
+let currentFile = null;
+let currentJobId = null;
+let pollInterval = null;
+
+// File handling
+document.getElementById('fileInput').addEventListener('change', e => {
+  handleFile(e.target.files[0]);
+});
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  currentFile = file;
+  document.getElementById('dropLabel').textContent = file.name;
+  document.getElementById('runBtn').disabled = false;
+
+  // Preview — show raw image (browser can't render GeoTIFF natively,
+  // show file info instead)
+  document.getElementById('preview').innerHTML = `
+    <div style="text-align:center; color:#666">
+      <div style="font-size:48px">🛰️</div>
+      <div style="margin-top:12px; font-size:14px; color:#aaa">${file.name}</div>
+      <div style="font-size:12px; color:#555; margin-top:4px">
+        ${(file.size / 1024 / 1024).toFixed(1)} MB
+      </div>
+      <div style="font-size:11px; color:#444; margin-top:8px">
+        Preview available after processing
+      </div>
+    </div>`;
+}
+
+function toggleContrast() {
+  const enabled = document.getElementById('contrastEnabled').checked;
+  document.getElementById('contrastParams').style.display = enabled ? 'block' : 'none';
+}
+
+async function submitJob() {
+  if (!currentFile) return;
+
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  formData.append('model_type',      document.getElementById('modelType').value);
+  formData.append('polarization',    document.getElementById('polarization').value);
+  formData.append('input_format',    document.getElementById('inputFormat').value);
+  formData.append('window_size',     document.getElementById('windowSize').value);
+  formData.append('overlap_pct',     document.getElementById('overlapPct').value);
+  formData.append('score_thresh',    document.getElementById('scoreThresh').value);
+  formData.append('nms_iou',         document.getElementById('nmsIou').value);
+  formData.append('contrast_enabled', document.getElementById('contrastEnabled').checked);
+  formData.append('contrast_method', document.getElementById('contrastMethod').value);
+  formData.append('percentile_low',  document.getElementById('percLow').value);
+  formData.append('percentile_high', document.getElementById('percHigh').value);
+  formData.append('gamma',           document.getElementById('gamma').value);
+  formData.append('clahe',           document.getElementById('clahe').checked);
+
+  // UI state
+  document.getElementById('runBtn').disabled   = true;
+  document.getElementById('abortBtn').style.display = 'block';
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+  setStatus('Uploading...');
+
+  const resp = await fetch('/api/jobs', { method: 'POST', body: formData });
+  const data = await resp.json();
+  currentJobId = data.job_id;
+
+  // Poll for status
+  pollInterval = setInterval(pollStatus, 1500);
+}
+
+async function pollStatus() {
+  if (!currentJobId) return;
+  const resp = await fetch(`/api/jobs/${currentJobId}/status`);
+  const data = await resp.json();
+
+  document.getElementById('progressFill').style.width = data.progress + '%';
+  setStatus(data.message);
+
+  if (data.status === 'done') {
+    clearInterval(pollInterval);
+    document.getElementById('abortBtn').style.display = 'none';
+
+    // Parse detection count from geojson
+    const result = await fetch(`/api/jobs/${currentJobId}/result`);
+    // Don't actually download yet — just get count
+    // We'll re-fetch on button click
+    // Instead get count from status message or separate endpoint
+
+    document.getElementById('resultsSection').style.display = 'block';
+    document.getElementById('resultsCount').textContent = data.message.split(' ')[0];
+    setStatus('Done!');
+
+  } else if (data.status === 'error') {
+    clearInterval(pollInterval);
+    setStatus('Error: ' + data.message);
+    document.getElementById('abortBtn').style.display = 'none';
+    document.getElementById('runBtn').disabled = false;
+  }
+}
+
+async function downloadResult() {
+  if (!currentJobId) return;
+  const a = document.createElement('a');
+  a.href = `/api/jobs/${currentJobId}/result`;
+  a.download = 'detections.geojson';
+  a.click();
+  // Cleanup happens server-side after download
+  currentJobId = null;
+}
+
+async function abortJob() {
+  clearInterval(pollInterval);
+  if (currentJobId) {
+    await fetch(`/api/jobs/${currentJobId}`, { method: 'DELETE' });
+    currentJobId = null;
+  }
+  document.getElementById('abortBtn').style.display = 'none';
+  document.getElementById('progressBar').style.display = 'none';
+  document.getElementById('runBtn').disabled = false;
+  setStatus('Aborted.');
+}
+
+function setStatus(msg) {
+  document.getElementById('statusMsg').textContent = msg;
+}
+
+// Cleanup on page close
+window.addEventListener('beforeunload', () => {
+  if (currentJobId) {
+    navigator.sendBeacon(`/api/jobs/${currentJobId}`, JSON.stringify({method:'DELETE'}));
+  }
+});
+</script>
+</body>
+</html>
