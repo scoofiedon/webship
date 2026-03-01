@@ -1,7 +1,11 @@
 FROM python:3.11-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y libgdal-dev gcc && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    libgdal-dev gcc libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.worker.txt .
 RUN pip install -r requirements.worker.txt
-COPY worker/ .
+COPY shared/inference_jobs.py ./inference_jobs.py
+COPY shared/model.py ./model.py
+ENV PYTHONPATH=/app
 CMD ["rq", "worker", "--url", "redis://redis:6379", "inference"]

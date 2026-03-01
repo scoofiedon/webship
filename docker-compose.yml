@@ -6,12 +6,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/data
+      - ./jobs:/jobs
       - ./models:/models
     environment:
       - REDIS_URL=redis://redis:6379
-      - DATA_DIR=/data
+      - JOBS_DIR=/jobs
       - MODELS_DIR=/models
+      - JOB_TTL_MINUTES=60
     depends_on:
       - redis
 
@@ -20,11 +21,11 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - ./data:/data
+      - ./jobs:/jobs
       - ./models:/models
     environment:
       - REDIS_URL=redis://redis:6379
-      - DATA_DIR=/data
+      - JOBS_DIR=/jobs
       - MODELS_DIR=/models
     depends_on:
       - redis

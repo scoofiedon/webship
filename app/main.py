@@ -1,114 +1,212 @@
-import os, uuid, json, asyncio
+import os, uuid, json, asyncio, time, shutil, io
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, UploadFile, File, Form, Request, BackgroundTasks
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 import aiofiles
 import redis
 from rq import Queue
 
-DATA_DIR  = Path(os.environ.get('DATA_DIR', '/data'))
-DATA_DIR.mkdir(exist_ok=True)
+JOBS_DIR        = Path(os.environ.get('JOBS_DIR', '/jobs'))
+JOB_TTL_MINUTES = int(os.environ.get('JOB_TTL_MINUTES', 60))
+JOBS_DIR.mkdir(exist_ok=True)
 
-r         = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'))
-q         = Queue('inference', connection=r)
+r = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'))
+q = Queue('inference', connection=r)
 
-app       = FastAPI(title='SAR Ship Detector')
+
+async def cleanup_daemon():
+    while True:
+        await asyncio.sleep(300)
+        now = time.time()
+        for job_dir in JOBS_DIR.iterdir():
+            if not job_dir.is_dir():
+                continue
+            try:
+                meta_path = job_dir / 'meta.json'
+                if not meta_path.exists():
+                    if now - job_dir.stat().st_mtime > 3600:
+                        shutil.rmtree(job_dir, ignore_errors=True)
+                    continue
+                with open(meta_path) as f:
+                    meta = json.load(f)
+                ttl = meta.get('ttl_minutes', JOB_TTL_MINUTES)
+                if ttl == -1:
+                    continue  # infinite
+                if now - meta['created_at'] > ttl * 60:
+                    shutil.rmtree(job_dir, ignore_errors=True)
+                    print(f'Cleaned up job: {job_dir.name}')
+            except Exception as e:
+                print(f'Cleanup error: {e}')
+
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(cleanup_daemon())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title='SAR Ship Detector', lifespan=lifespan)
 app.mount('/static', StaticFiles(directory='static'), name='static')
+
+
+@app.get('/api/jobs')
+async def list_jobs():
+    """List all jobs with their status and metadata."""
+    jobs = []
+    for job_dir in sorted(JOBS_DIR.iterdir(),
+                          key=lambda p: p.stat().st_mtime, reverse=True):
+        if not job_dir.is_dir():
+            continue
+        try:
+            meta_path   = job_dir / 'meta.json'
+            status_path = job_dir / 'status.json'
+            if not meta_path.exists():
+                continue
+            with open(meta_path)   as f: meta   = json.load(f)
+            with open(status_path) as f: status = json.load(f)
+            jobs.append({
+                'job_id':     job_dir.name,
+                'filename':   meta.get('filename', ''),
+                'created_at': meta.get('created_at', 0),
+                'ttl_minutes': meta.get('ttl_minutes', JOB_TTL_MINUTES),
+                'params':     meta.get('params', {}),
+                **status,
+            })
+        except Exception:
+            continue
+    return jobs
 
 
 @app.post('/api/jobs')
 async def submit_job(
-    file:            UploadFile = File(...),
-    model_type:      str = Form('yolo'),        # 'yolo' or 'fasterrcnn'
-    polarization:    str = Form('VV'),
-    input_format:    str = Form('byte'),
-    window_size:     int = Form(800),
-    overlap_pct:     float = Form(0.25),
-    score_thresh:    float = Form(0.3),
-    nms_iou:         float = Form(0.3),
-    contrast_enabled: bool = Form(False),
-    contrast_method:  str = Form('percentile'),
+    request:          Request,
+    file:             UploadFile = File(...),
+    model_type:       str   = Form('yolo'),
+    polarization:     str   = Form('VV'),
+    input_format:     str   = Form('byte'),
+    window_size:      int   = Form(800),
+    overlap_pct:      float = Form(0.25),
+    score_thresh:     float = Form(0.3),
+    nms_iou:          float = Form(0.3),
+    ttl_minutes:      int   = Form(60),       # -1 = infinite
+    contrast_enabled: bool  = Form(True),
+    contrast_method:  str   = Form('percentile'),
     percentile_low:   float = Form(2.0),
     percentile_high:  float = Form(98.0),
     gamma:            float = Form(1.0),
-    clahe:            bool = Form(False),
+    clahe:            bool  = Form(True),
 ):
     job_id  = str(uuid.uuid4())
-    job_dir = DATA_DIR / job_id
+    job_dir = JOBS_DIR / job_id
     job_dir.mkdir()
 
-    # Save uploaded file
-    image_path = job_dir / file.filename
-    async with aiofiles.open(image_path, 'wb') as f:
-        await f.write(await file.read())
+    # Stream upload
+    image_path    = job_dir / file.filename
+    total_size    = int(request.headers.get('content-length', 0))
+    uploaded_size = 0
+
+    async with aiofiles.open(image_path, 'wb') as out:
+        while chunk := await file.read(1024 * 1024):
+            await out.write(chunk)
+            uploaded_size += len(chunk)
+            progress = int(uploaded_size / total_size * 10) if total_size else 0
+            with open(job_dir / 'status.json', 'w') as f:
+                json.dump({'status': 'uploading', 'progress': progress,
+                           'message': f'Uploading {uploaded_size//1024//1024}MB...'}, f)
 
     params = {
-        'window_size':  window_size,
-        'overlap_pct':  overlap_pct,
-        'score_thresh': score_thresh,
-        'nms_iou':      nms_iou,
-        'polarization': polarization,
-        'input_format': input_format,
-        'device':       'cpu',
+        'window_size': window_size, 'overlap_pct': overlap_pct,
+        'score_thresh': score_thresh, 'nms_iou': nms_iou,
+        'polarization': polarization, 'input_format': input_format,
+        'device': 'cpu',
         'contrast': {
-            'enabled':         contrast_enabled,
-            'method':          contrast_method,
-            'percentile_low':  percentile_low,
-            'percentile_high': percentile_high,
-            'gamma':           gamma,
-            'clahe':           clahe,
+            'enabled': contrast_enabled, 'method': contrast_method,
+            'percentile_low': percentile_low, 'percentile_high': percentile_high,
+            'gamma': gamma, 'clahe': clahe,
         }
     }
 
-    # Write initial status
-    with open(job_dir / 'status.json', 'w') as f:
-        json.dump({'status': 'queued', 'progress': 0, 'message': ''}, f)
+    with open(job_dir / 'meta.json', 'w') as f:
+        json.dump({
+            'created_at':  time.time(),
+            'filename':    file.filename,
+            'ttl_minutes': ttl_minutes,
+            'params':      params,
+        }, f)
 
-    # Enqueue job in worker
+    with open(job_dir / 'status.json', 'w') as f:
+        json.dump({'status': 'queued', 'progress': 10,
+                   'message': 'Queued...'}, f)
+
     q.enqueue(
         'inference_jobs.run_inference_job',
         job_id, str(image_path), model_type, params,
-        job_timeout=3600,
-        job_id=job_id,
+        job_timeout=3600, job_id=job_id,
     )
-
     return {'job_id': job_id}
 
 
 @app.get('/api/jobs/{job_id}/status')
 async def job_status(job_id: str):
-    status_path = DATA_DIR / job_id / 'status.json'
-    if not status_path.exists():
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    with open(status_path) as f:
+    p = JOBS_DIR / job_id / 'status.json'
+    if not p.exists():
+        return JSONResponse({'error': 'Not found'}, status_code=404)
+    with open(p) as f:
         return json.load(f)
 
 
-@app.get('/api/jobs/{job_id}/result')
-async def download_result(job_id: str, background_tasks: BackgroundTasks):
-    result_path = DATA_DIR / job_id / 'result.geojson'
-    if not result_path.exists():
-        return JSONResponse({'error': 'Result not ready'}, status_code=404)
+@app.get('/api/jobs/{job_id}/preview')
+async def get_preview(job_id: str):
+    p = JOBS_DIR / job_id / 'preview.png'
+    if not p.exists():
+        return JSONResponse({'error': 'Not found'}, status_code=404)
+    return FileResponse(p, media_type='image/png',
+                        headers={'Cache-Control': 'no-cache'})
 
-    # Schedule cleanup after download
-    background_tasks.add_task(cleanup_job, job_id)
-    return FileResponse(result_path, filename='detections.geojson',
+
+@app.get('/api/jobs/{job_id}/preview_result')
+async def get_preview_result(job_id: str):
+    p = JOBS_DIR / job_id / 'preview_result.png'
+    if not p.exists():
+        return JSONResponse({'error': 'Not found'}, status_code=404)
+    return FileResponse(p, media_type='image/png',
+                        headers={'Cache-Control': 'no-cache'})
+
+
+@app.get('/api/jobs/{job_id}/result')
+async def download_result(job_id: str):
+    p = JOBS_DIR / job_id / 'result.geojson'
+    if not p.exists():
+        return JSONResponse({'error': 'Not found'}, status_code=404)
+    return FileResponse(p, filename='detections.geojson',
                         media_type='application/geo+json')
 
 
+@app.patch('/api/jobs/{job_id}/ttl')
+async def update_ttl(job_id: str, ttl_minutes: int):
+    meta_path = JOBS_DIR / job_id / 'meta.json'
+    if not meta_path.exists():
+        return JSONResponse({'error': 'Not found'}, status_code=404)
+    with open(meta_path) as f:
+        meta = json.load(f)
+    meta['ttl_minutes'] = ttl_minutes
+    with open(meta_path, 'w') as f:
+        json.dump(meta, f)
+    return {'ttl_minutes': ttl_minutes}
+
+
 @app.delete('/api/jobs/{job_id}')
-async def abort_job(job_id: str):
-    """Called when user closes browser or aborts."""
-    cleanup_job(job_id)
+async def delete_job(job_id: str):
+    from rq.job import Job
+    try:
+        Job.fetch(job_id, connection=r).cancel()
+    except Exception:
+        pass
+    shutil.rmtree(JOBS_DIR / job_id, ignore_errors=True)
     return {'status': 'deleted'}
-
-
-def cleanup_job(job_id: str):
-    import shutil
-    job_dir = DATA_DIR / job_id
-    if job_dir.exists():
-        shutil.rmtree(job_dir)
 
 
 @app.get('/')

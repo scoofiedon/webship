@@ -2,6 +2,7 @@
 HRSID_JPG/*
 HRSID_png/*
 logs/*
+jobs/*
 runs/*
 S1*/
 yolo*
