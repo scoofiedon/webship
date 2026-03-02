@@ -73,7 +73,7 @@ def preprocess_patch(patch: np.ndarray, polarization: str,
     if input_format == 'byte':
         arr = patch.astype(np.float32)
     elif input_format == 'linear':
-        arr = np.log1p(patch.astype(np.float32))
+        arr = 10.0 * np.log10(np.clip(patch.astype(np.float32), 1e-10, None))
         arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-10) * 255.0
     elif input_format == 'db':
         arr = patch.astype(np.float32)
