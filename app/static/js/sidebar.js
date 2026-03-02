@@ -35,6 +35,7 @@ const Sidebar = {
   },
 
   initContrastToggle() {
+    document.getElementById('contrastParams').style.display = 'none';
     document.getElementById('contrastEnabled').addEventListener('change', function() {
       document.getElementById('contrastParams').style.display =
         this.checked ? 'block' : 'none';

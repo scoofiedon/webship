@@ -125,8 +125,8 @@ const Jobs = (() => {
 
     _setVal('contrastMethod', c.method || 'percentile');
 
-    _setSlider('percLow',  c.percentile_low  !== undefined ? c.percentile_low  : 2,   'percLowV',  function(v){ return v+'%'; });
-    _setSlider('percHigh', c.percentile_high !== undefined ? c.percentile_high : 98,  'percHighV', function(v){ return v+'%'; });
+    _setSlider('percLow',  c.percentile_low  !== undefined ? c.percentile_low  : 5,   'percLowV',  function(v){ return v+'%'; });
+    _setSlider('percHigh', c.percentile_high !== undefined ? c.percentile_high : 95,  'percHighV', function(v){ return v+'%'; });
     _setSlider('gamma',    c.gamma           !== undefined ? c.gamma           : 1.0, 'gammaV',    function(v){ return (+v).toFixed(1); });
 
     _setCheck('clahe', c.clahe !== false);

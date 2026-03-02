@@ -66,7 +66,18 @@ async def list_jobs():
             if not meta_path.exists():
                 continue
             with open(meta_path)   as f: meta   = json.load(f)
-            with open(status_path) as f: status = json.load(f)
+            
+            # Handle status.json with error tolerance
+            status = {'status': 'unknown', 'progress': 0, 'message': ''}
+            if status_path.exists():
+                try:
+                    with open(status_path) as f:
+                        status_content = f.read().strip()
+                        if status_content:
+                            status = json.loads(status_content)
+                except (json.JSONDecodeError, IOError):
+                    # If status.json is corrupted, use default status
+                    pass
             jobs.append({
                 'job_id':     job_dir.name,
                 'filename':   meta.get('filename', ''),
@@ -155,8 +166,29 @@ async def job_status(job_id: str):
     p = JOBS_DIR / job_id / 'status.json'
     if not p.exists():
         return JSONResponse({'error': 'Not found'}, status_code=404)
-    with open(p) as f:
-        return json.load(f)
+    
+    try:
+        # Read file with retry logic to handle race conditions
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with open(p, 'r') as f:
+                    content = f.read().strip()
+                    if not content:
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(0.1)
+                            continue
+                        else:
+                            return JSONResponse({'error': 'Status file is empty'}, status_code=500)
+                    return json.loads(content)
+            except (json.JSONDecodeError, IOError) as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(0.1)
+                    continue
+                else:
+                    return JSONResponse({'error': f'Error reading status: {str(e)}'}, status_code=500)
+    except Exception as e:
+        return JSONResponse({'error': f'Unexpected error: {str(e)}'}, status_code=500)
 
 
 @app.get('/api/jobs/{job_id}/preview')
