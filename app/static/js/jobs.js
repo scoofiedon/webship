@@ -84,10 +84,25 @@ const Jobs = (() => {
     const result = await API.getStatus(job.job_id);
     if (!result.ok) return;
 
-    // Load all meta fields into the sidebar form
+    if (result.data.status === 'done') {
+      Sidebar.setProgress(100);
+      Sidebar.setStatus(result.data.message || '');
+    } else if (result.data.status === 'running' || result.data.status === 'uploading') {
+      Sidebar.setProgress(result.data.progress || 0);
+      Sidebar.setStatus(result.data.message || '');
+    } else {
+      Sidebar.setProgress(0);
+      Sidebar.setStatus(result.data.status || '');
+    }
+
     _loadJobToForm(job);
 
     Preview.setForJob(job.job_id, result.data);
+
+    if (result.data.status === 'running' || result.data.status === 'uploading') {
+      Sidebar.setProgress(result.data.progress || 0);
+      Sidebar.setStatus(result.data.message || '');
+    }
 
     if ((result.data.status === 'running' || result.data.status === 'queued') &&
         job.job_id !== State.get('activeJobId')) {
@@ -99,9 +114,6 @@ const Jobs = (() => {
 
   // ── Load job meta into left sidebar form ───────────────
   function _loadJobToForm(job) {
-    // params is the nested dict stored in meta.json
-    // the job object from /api/jobs merges meta + status so
-    // we may find fields at job.params.X or directly at job.X
     const p = job.params || {};
 
     // ── Top-level ──────────────────────────────────────
@@ -109,6 +121,7 @@ const Jobs = (() => {
     _setVal('polarization', p.polarization || '');
     _setVal('inputFormat',  p.input_format || '');
     _setVal('windowSize',   p.window_size  || 800);
+    _setVal('targetSize',   p.target_size  || 800);
     _setVal('ttlMinutes',   job.ttl_minutes !== undefined ? job.ttl_minutes : 60);
 
     // ── Detection sliders ──────────────────────────────

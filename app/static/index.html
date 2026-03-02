@@ -63,6 +63,9 @@
     <div class="form-group">
       <label>Window size (px)</label>
       <select id="windowSize">
+        <option value="192">192</option>
+        <option value="224">224</option>
+        <option value="448">448</option>
         <option value="512">512</option>
         <option value="800" selected>800</option>
         <option value="1024">1024</option>
@@ -70,9 +73,19 @@
     </div>
 
     <div class="form-group">
+      <label>Target size for interpolation (px)</label>
+      <select id="targetSize">
+        <option value="512">512</option>
+        <option value="800" selected>800</option>
+        <option value="1024">1024</option>
+      </select>
+      <small style="color: var(--text-faint);">Interpolate smaller windows to match HRSID training data</small>
+    </div>
+
+    <div class="form-group">
       <label>Overlap</label>
       <div class="range-row">
-        <input type="range" id="overlapPct" min="0" max="0.5" step="0.05" value="0.25">
+        <input type="range" id="overlapPct" min="0" max="0.75" step="0.05" value="0.25">
         <span class="range-val" id="overlapVal">25%</span>
       </div>
     </div>

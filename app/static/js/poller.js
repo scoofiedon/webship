@@ -27,16 +27,16 @@ const Poller = (() => {
     const isViewing = State.get('viewJobId')    === jobId;
     const progress  = data.progress || 0;
 
-    // Update sidebar progress only for the job we submitted
     if (isActive && !opts.previewOnly) {
+      Sidebar.setProgress(progress);
+      Sidebar.setStatus(data.message || '');
+    } else if (isViewing && opts.previewOnly) {
       Sidebar.setProgress(progress);
       Sidebar.setStatus(data.message || '');
     }
 
-    // Update preview if user is watching this job
     if (isViewing) {
       if (data.status === 'running' && progress >= 15) {
-        // Only reload if we're currently showing a spinner
         const panel = document.getElementById('panel');
         if (panel.querySelector('.spinner') || panel.querySelector('.preview-empty')) {
           Preview.loadImage(jobId, false);

@@ -68,7 +68,8 @@ def enhance_contrast(arr: np.ndarray, method: str = 'percentile',
 
 def preprocess_patch(patch: np.ndarray, polarization: str,
                      input_format: str,
-                     contrast_params: dict) -> np.ndarray:
+                     contrast_params: dict,
+                     target_size: int = None) -> np.ndarray:
     pol = polarization.upper()
     if input_format == 'byte':
         arr = patch.astype(np.float32)
@@ -82,6 +83,13 @@ def preprocess_patch(patch: np.ndarray, polarization: str,
         raise ValueError(f'Unknown format: {input_format}')
 
     arr = np.clip(arr, 0, 255).astype(np.uint8)
+
+    # Interpolate to target size if specified and patch is smaller
+    if target_size is not None and patch.shape[0] < target_size:
+        import cv2
+        # Interpolate using bicubic interpolation for better quality
+        arr = cv2.resize(arr, (target_size, target_size), 
+                        interpolation=cv2.INTER_CUBIC)
 
     if contrast_params.get('enabled', True):
         arr = enhance_contrast(
@@ -213,6 +221,13 @@ def run_inference_job(job_id: str, image_path: str,
         polarization = params['polarization']
         input_format = params['input_format']
         device       = params.get('device', 'cpu')
+        
+        # Set target size for interpolation - use 800x800 as default for HRSID training
+        target_size = params.get('target_size', 800)
+        
+        # If current window size is smaller than target, use interpolation
+        if window_size < target_size:
+            print(f"Interpolating patches from {window_size}x{window_size} to {target_size}x{target_size} to match HRSID training data")
 
         stride   = int(window_size * (1 - overlap_pct))
         y_starts = list(range(0, H - window_size + 1, stride))
@@ -245,14 +260,15 @@ def run_inference_job(job_id: str, image_path: str,
 
                 patch     = image_np[y:y+window_size, x:x+window_size]
                 patch_rgb = preprocess_patch(patch, polarization,
-                                             input_format, contrast_params)
+                                             input_format, contrast_params,
+                                             target_size if window_size < target_size else None)
                 del patch
 
                 if model_type == 'yolo':
                     results = model.predict(
                         patch_rgb.copy(),
                         conf=score_thresh, iou=nms_iou,
-                        imgsz=window_size, device=device, verbose=False,
+                        imgsz=target_size, device=device, verbose=False,
                     )
                     result = results[0]
                     if result.boxes is None or len(result.boxes) == 0:
@@ -276,6 +292,12 @@ def run_inference_job(job_id: str, image_path: str,
 
                 del patch_rgb
 
+                # Adjust coordinates for interpolation if needed
+                if window_size < target_size:
+                    scale_factor = window_size / target_size
+                    boxes[:, [0, 2]] = boxes[:, [0, 2]] * scale_factor
+                    boxes[:, [1, 3]] = boxes[:, [1, 3]] * scale_factor
+                
                 boxes[:, [0, 2]] += x
                 boxes[:, [1, 3]] += y
                 all_boxes.append(boxes)

@@ -94,6 +94,7 @@ const Sidebar = {
     fd.append('percentile_high',  _val('percHigh'));
     fd.append('gamma',            _val('gamma'));
     fd.append('clahe',            document.getElementById('clahe').checked);
+    fd.append('target_size',      _val('targetSize'));
 
     document.getElementById('runBtn').disabled        = true;
     document.getElementById('newBtn').disabled        = false;

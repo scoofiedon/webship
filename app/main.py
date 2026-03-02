@@ -109,6 +109,7 @@ async def submit_job(
     percentile_high:  float = Form(98.0),
     gamma:            float = Form(1.0),
     clahe:            bool  = Form(True),
+    target_size:      int   = Form(800),
 ):
     job_id  = str(uuid.uuid4())
     job_dir = JOBS_DIR / job_id
@@ -133,6 +134,7 @@ async def submit_job(
         'window_size': window_size, 'overlap_pct': overlap_pct,
         'score_thresh': score_thresh, 'nms_iou': nms_iou,
         'polarization': polarization, 'input_format': input_format,
+        'target_size': target_size,
         'device': 'cpu',
         'contrast': {
             'enabled': contrast_enabled, 'method': contrast_method,
