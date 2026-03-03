@@ -42,6 +42,30 @@ const Sidebar = {
     });
   },
 
+  initModelTypeToggle() {
+    document.getElementById('traditionalParams').style.display = 'none';
+    document.getElementById('traditionalParamsContent').style.display = 'none';
+    
+    document.getElementById('modelType').addEventListener('change', function() {
+      const isTraditional = this.value === 'traditional';
+      document.getElementById('traditionalParams').style.display = 
+        isTraditional ? 'block' : 'none';
+      document.getElementById('traditionalParamsContent').style.display = 
+        isTraditional ? 'block' : 'none';
+      
+      // Hide/show neural network specific parameters
+      const neuralNetParams = ['targetSize', 'contrastEnabled', 'contrastMethod', 
+                              'percLow', 'percHigh', 'gamma', 'clahe'];
+      neuralNetParams.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.closest('.form-group').style.display = 
+            isTraditional ? 'none' : 'block';
+        }
+      });
+    });
+  },
+
   setProgress(pct, mode = '') {
     const fill = document.getElementById('pFill');
     fill.style.width = pct + '%';
@@ -95,6 +119,15 @@ const Sidebar = {
     fd.append('gamma',            _val('gamma'));
     fd.append('clahe',            document.getElementById('clahe').checked);
     fd.append('target_size',      _val('targetSize'));
+    
+    // Add traditional detection parameters if selected
+    if (_val('modelType') === 'traditional') {
+      fd.append('pfa',              _val('pfa'));
+      fd.append('guard',            _val('guard'));
+      fd.append('train',            _val('train'));
+      fd.append('buffer_deg',       _val('bufferDeg'));
+      fd.append('extra_dilation_px', _val('extraDilationPx'));
+    }
 
     document.getElementById('runBtn').disabled        = true;
     document.getElementById('newBtn').disabled        = false;

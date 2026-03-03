@@ -239,10 +239,13 @@ def run_inference_job(job_id: str, image_path: str,
 
         total = len(y_starts) * len(x_starts)
 
-        # Load model
+        # Load model or traditional detector
         if model_type == 'yolo':
             from ultralytics import YOLO
             model = YOLO(str(MODELS_DIR / 'best.pt'))
+        elif model_type == 'traditional':
+            # Traditional CA-CFAR detector - no model to load
+            model = None
         else:
             from model import get_faster_rcnn
             model = get_faster_rcnn(num_classes=2, pretrained=False, freeze_backbone=False)
@@ -259,38 +262,83 @@ def run_inference_job(job_id: str, image_path: str,
                               f'Patch {patch_num}/{total}')
 
                 patch     = image_np[y:y+window_size, x:x+window_size]
-                patch_rgb = preprocess_patch(patch, polarization,
-                                             input_format, contrast_params,
-                                             target_size if window_size < target_size else None)
-                del patch
-
-                if model_type == 'yolo':
-                    results = model.predict(
-                        patch_rgb.copy(),
-                        conf=score_thresh, iou=nms_iou,
-                        imgsz=target_size, device=device, verbose=False,
-                    )
-                    result = results[0]
-                    if result.boxes is None or len(result.boxes) == 0:
-                        del patch_rgb
-                        continue
-                    boxes  = result.boxes.xyxy.cpu().clone()
-                    scores = result.boxes.conf.cpu().clone()
-                    labels = result.boxes.cls.cpu().int().clone()
+                
+                if model_type == 'traditional':
+                    # Traditional CA-CFAR detection on patch
+                    patch_processed = preprocess_patch(patch, polarization,
+                                                     input_format, contrast_params,
+                                                     target_size if window_size < target_size else None)
+                    # Convert to single channel for traditional processing
+                    patch_single = patch_processed[:,:,0] if len(patch_processed.shape) == 3 else patch_processed
+                    
+                    # Run CA-CFAR on this patch
+                    from traditional_detection import ca_cfar_fast
+                    detections = ca_cfar_fast(patch_single.astype(np.float32), 
+                                            guard=params.get('guard', 4),
+                                            train=params.get('train', 16),
+                                            pfa=params.get('pfa', 1e-6))
+                    
+                    # Convert detections to bounding boxes
+                    from scipy.ndimage import label
+                    labeled, n_features = label(detections)
+                    patch_boxes, patch_scores, patch_labels = [], [], []
+                    
+                    for i in range(1, n_features + 1):
+                        blob = np.where(labeled == i)
+                        if len(blob[0]) >= 4:  # Minimum size
+                            cy = int(np.mean(blob[0]))
+                            cx = int(np.mean(blob[1]))
+                            size = len(blob[0])
+                            # Create small bounding box around detection
+                            box_size = int(np.sqrt(size))
+                            x1, y1 = cx - box_size//2, cy - box_size//2
+                            x2, y2 = cx + box_size//2, cy + box_size//2
+                            patch_boxes.append([x1, y1, x2, y2])
+                            patch_scores.append(1.0)  # Traditional methods don't produce confidence
+                            patch_labels.append(0)    # Ship class
+                    
+                    if patch_boxes:
+                        boxes = torch.tensor(patch_boxes, dtype=torch.float32)
+                        scores = torch.tensor(patch_scores, dtype=torch.float32)
+                        labels = torch.tensor(patch_labels, dtype=torch.int32)
+                    else:
+                        boxes = torch.zeros((0, 4), dtype=torch.float32)
+                        scores = torch.zeros((0,), dtype=torch.float32)
+                        labels = torch.zeros((0,), dtype=torch.int32)
+                        
                 else:
-                    import torch
-                    tensor = torch.from_numpy(
-                        patch_rgb[:,:,0].astype(np.float32) / 255.0
-                    ).unsqueeze(0).unsqueeze(0)
-                    with torch.no_grad():
-                        out = model(tensor)[0]
-                    boxes  = out['boxes'].cpu()
-                    scores = out['scores'].cpu()
-                    labels = out['labels'].cpu().int()
-                    keep   = scores > score_thresh
-                    boxes, scores, labels = boxes[keep], scores[keep], labels[keep]
+                    patch_rgb = preprocess_patch(patch, polarization,
+                                                 input_format, contrast_params,
+                                                 target_size if window_size < target_size else None)
+                    del patch
 
-                del patch_rgb
+                    if model_type == 'yolo':
+                        results = model.predict(
+                            patch_rgb.copy(),
+                            conf=score_thresh, iou=nms_iou,
+                            imgsz=target_size, device=device, verbose=False,
+                        )
+                        result = results[0]
+                        if result.boxes is None or len(result.boxes) == 0:
+                            del patch_rgb
+                            continue
+                        boxes  = result.boxes.xyxy.cpu().clone()
+                        scores = result.boxes.conf.cpu().clone()
+                        labels = result.boxes.cls.cpu().int().clone()
+                    else:
+                        import torch
+                        tensor = torch.from_numpy(
+                            patch_rgb[:,:,0].astype(np.float32) / 255.0
+                        ).unsqueeze(0).unsqueeze(0)
+                        with torch.no_grad():
+                            out = model(tensor)[0]
+                        boxes  = out['boxes'].cpu()
+                        scores = out['scores'].cpu()
+                        labels = out['labels'].cpu().int()
+                        keep   = scores > score_thresh
+                        boxes, scores, labels = boxes[keep], scores[keep], labels[keep]
+
+                    del patch_rgb
 
                 # Adjust coordinates for interpolation if needed
                 if window_size < target_size:

@@ -4,6 +4,7 @@
 window.addEventListener('load', async () => {
   Sidebar.initDropZone();
   Sidebar.initContrastToggle();
+  Sidebar.initModelTypeToggle();
 
   // Wire range inputs to their display spans
   _wireRange('overlapPct',  'overlapVal', v => (v * 100).toFixed(0) + '%');
@@ -12,6 +13,13 @@ window.addEventListener('load', async () => {
   _wireRange('percLow',     'percLowV',   v => v + '%');
   _wireRange('percHigh',    'percHighV',  v => v + '%');
   _wireRange('gamma',       'gammaV',     v => (+v).toFixed(1));
+  
+  // Traditional detection parameters
+  _wireRange('pfa',              'pfaVal',     v => (+v).toExponential(1));
+  _wireRange('guard',            'guardVal',   v => v);
+  _wireRange('train',            'trainVal',   v => v);
+  _wireRange('bufferDeg',       'bufferDegVal', v => (+v).toFixed(3));
+  _wireRange('extraDilationPx', 'extraDilationPxVal', v => v);
 
   // Wire buttons
   document.getElementById('runBtn').onclick   = () => Sidebar.submitJob();

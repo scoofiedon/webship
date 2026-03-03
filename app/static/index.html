@@ -32,6 +32,7 @@
       <select id="modelType">
         <option value="yolo">YOLO26s</option>
         <option value="fasterrcnn">Faster R-CNN</option>
+        <option value="traditional">CA-CFAR (Traditional)</option>
       </select>
     </div>
 
@@ -103,6 +104,51 @@
       <div class="range-row">
         <input type="range" id="nmsIou" min="0.1" max="0.7" step="0.05" value="0.3">
         <span class="range-val" id="nmsVal">0.30</span>
+      </div>
+    </div>
+
+    <!-- Traditional Detection Parameters -->
+    <div class="section-title" id="traditionalParams" style="display:none;">Traditional Detection</div>
+
+    <div id="traditionalParamsContent" style="display:none;">
+      <div class="form-group">
+        <label>PFA (False Alarm Rate)</label>
+        <div class="range-row">
+          <input type="range" id="pfa" min="1e-8" max="1e-3" step="1e-7" value="1e-6">
+          <span class="range-val" id="pfaVal">1e-6</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Guard Cells</label>
+        <div class="range-row">
+          <input type="range" id="guard" min="1" max="10" step="1" value="4">
+          <span class="range-val" id="guardVal">4</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Training Cells</label>
+        <div class="range-row">
+          <input type="range" id="train" min="8" max="32" step="4" value="16">
+          <span class="range-val" id="trainVal">16</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Land Buffer (degrees)</label>
+        <div class="range-row">
+          <input type="range" id="bufferDeg" min="0" max="0.01" step="0.001" value="0.002">
+          <span class="range-val" id="bufferDegVal">0.002</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Coast Dilation (pixels)</label>
+        <div class="range-row">
+          <input type="range" id="extraDilationPx" min="0" max="10" step="1" value="3">
+          <span class="range-val" id="extraDilationPxVal">3</span>
+        </div>
       </div>
     </div>
 

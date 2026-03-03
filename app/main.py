@@ -110,6 +110,12 @@ async def submit_job(
     gamma:            float = Form(1.0),
     clahe:            bool  = Form(True),
     target_size:      int   = Form(800),
+    # Traditional detection parameters
+    pfa:              float = Form(1e-6),
+    guard:            int   = Form(4),
+    train:            int   = Form(16),
+    buffer_deg:       float = Form(0.002),
+    extra_dilation_px: int  = Form(3),
 ):
     job_id  = str(uuid.uuid4())
     job_dir = JOBS_DIR / job_id
@@ -142,6 +148,17 @@ async def submit_job(
             'gamma': gamma, 'clahe': clahe,
         }
     }
+    
+    # Add traditional detection parameters if using traditional method
+    if model_type == 'traditional':
+        params.update({
+            'pfa': pfa,
+            'guard': guard,
+            'train': train,
+            'buffer_deg': buffer_deg,
+            'extra_dilation_px': extra_dilation_px,
+            'gshhg_path': './gshhg/GSHHS_f_L1.shp'  # Path to GSHHG data - REQUIRED for production
+        })
 
     with open(job_dir / 'meta.json', 'w') as f:
         json.dump({

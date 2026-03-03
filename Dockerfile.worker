@@ -5,7 +5,6 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.worker.txt .
 RUN pip install -r requirements.worker.txt
-COPY shared/inference_jobs.py ./inference_jobs.py
-COPY shared/model.py ./model.py
-ENV PYTHONPATH=/app
+COPY shared/ ./shared/
+ENV PYTHONPATH=/app:/app/shared
 CMD ["rq", "worker", "--url", "redis://redis:6379", "inference"]
