@@ -114,7 +114,7 @@ async def submit_job(
     pfa:              float = Form(1e-6),
     guard:            int   = Form(4),
     train:            int   = Form(16),
-    buffer_deg:       float = Form(0.002),
+    buffer_meters:    float = Form(10.0), 
     extra_dilation_px: int  = Form(3),
 ):
     job_id  = str(uuid.uuid4())
@@ -155,7 +155,7 @@ async def submit_job(
             'pfa': pfa,
             'guard': guard,
             'train': train,
-            'buffer_deg': buffer_deg,
+            'buffer_meters': buffer_meters,
             'extra_dilation_px': extra_dilation_px,
             'gshhg_path': './gshhg/GSHHS_f_L1.shp'  # Path to GSHHG data - REQUIRED for production
         })

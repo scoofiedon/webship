@@ -125,7 +125,7 @@ const Sidebar = {
       fd.append('pfa',              _val('pfa'));
       fd.append('guard',            _val('guard'));
       fd.append('train',            _val('train'));
-      fd.append('buffer_deg',       _val('bufferDeg'));
+      fd.append('buffer_meters',       _val('bufferMeters'));
       fd.append('extra_dilation_px', _val('extraDilationPx'));
     }
 

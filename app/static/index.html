@@ -65,11 +65,14 @@
       <label>Window size (px)</label>
       <select id="windowSize">
         <option value="192">192</option>
-        <option value="224">224</option>
+        <option value="320">320</option>
         <option value="448">448</option>
         <option value="512">512</option>
+        <option value="640">640</option>
         <option value="800" selected>800</option>
         <option value="1024">1024</option>
+        <option value="2048">2048</option>
+        <option value="4096">4096</option>
       </select>
     </div>
 
@@ -114,8 +117,8 @@
       <div class="form-group">
         <label>PFA (False Alarm Rate)</label>
         <div class="range-row">
-          <input type="range" id="pfa" min="1e-8" max="1e-3" step="1e-7" value="1e-6">
-          <span class="range-val" id="pfaVal">1e-6</span>
+          <input type="range" id="pfa" min="1e-7" max="1e-2" step="1e-6" value="1e-3">
+          <span class="range-val" id="pfaVal">1e-3</span>
         </div>
       </div>
 
@@ -130,16 +133,16 @@
       <div class="form-group">
         <label>Training Cells</label>
         <div class="range-row">
-          <input type="range" id="train" min="8" max="32" step="4" value="16">
-          <span class="range-val" id="trainVal">16</span>
+          <input type="range" id="train" min="8" max="32" step="4" value="8">
+          <span class="range-val" id="trainVal">8</span>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Land Buffer (degrees)</label>
+        <label>Land Buffer (meters)</label>
         <div class="range-row">
-          <input type="range" id="bufferDeg" min="0" max="0.01" step="0.001" value="0.002">
-          <span class="range-val" id="bufferDegVal">0.002</span>
+          <input type="range" id="bufferMeters" min="0" max="100" step="2" value="5">
+          <span class="range-val" id="bufferMetersVal">5</span>
         </div>
       </div>
 

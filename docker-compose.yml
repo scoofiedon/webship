@@ -7,6 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app
+      - ./shared:/app/shared
       - ./jobs:/jobs
       - ./models:/models
     environment:
@@ -22,12 +23,15 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
+      - ./shared:/app/shared
       - ./jobs:/jobs
       - ./models:/models
+      - ./gshhg:/gshhg
     environment:
       - REDIS_URL=redis://redis:6379
       - JOBS_DIR=/jobs
       - MODELS_DIR=/models
+      - GSHHG_SHP_PATH=/gshhg/gshhg-shp-2.3.7/GSHHS_shp/f/GSHHS_f_L1.shp
     depends_on:
       - redis
 

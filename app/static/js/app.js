@@ -18,7 +18,7 @@ window.addEventListener('load', async () => {
   _wireRange('pfa',              'pfaVal',     v => (+v).toExponential(1));
   _wireRange('guard',            'guardVal',   v => v);
   _wireRange('train',            'trainVal',   v => v);
-  _wireRange('bufferDeg',       'bufferDegVal', v => (+v).toFixed(3));
+  _wireRange('bufferMeters',       'bufferMetersVal', v => v);
   _wireRange('extraDilationPx', 'extraDilationPxVal', v => v);
 
   // Wire buttons
