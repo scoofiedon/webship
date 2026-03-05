@@ -187,7 +187,7 @@ const Jobs = (() => {
       .then(job => {
         var originalName = job.filename;
         var baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-        a.download = baseName + '.geojson';
+        a.download = baseName + '.zip';
         a.click();
       })
       .catch(() => {

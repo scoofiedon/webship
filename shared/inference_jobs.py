@@ -378,6 +378,12 @@ def run_inference_job(job_id: str, image_path: str,
 
         # 7. Build GeoJSON
         update_status(job_dir, 'running', 95, 'Building results...')
+        import zipfile
+        from shapely.geometry import Point
+        import geopandas as gpd
+        base_name = os.path.splitext(os.path.basename(image_path))[0]
+
+        records = []
         features = []
         if n_det > 0:
             for i in range(n_det):
@@ -386,6 +392,7 @@ def run_inference_job(job_id: str, image_path: str,
                 label  = int(all_labels[i].item())
                 cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
                 lon, lat = rasterio.transform.xy(transform, cy, cx)
+
                 features.append({
                     'type': 'Feature',
                     'geometry': {'type': 'Point',
@@ -401,14 +408,32 @@ def run_inference_job(job_id: str, image_path: str,
                     }
                 })
 
-        geojson = {
-            'type': 'FeatureCollection',
-            'crs':  {'type': 'name',
-                     'properties': {'name': crs.to_string()}},
-            'features': features
-        }
-        with open(job_dir / f'{os.path.splitext(os.path.basename(image_path))[0]}.geojson', 'w') as f:
-            json.dump(geojson, f, indent=2)
+                records.append({
+                    'geometry':     Point(lon, lat),
+                    'score':        round(score, 4),
+                    'conf_bin':     score_to_bin(score),
+                    'label':        label,
+                    'pixel_x':      round(cx),
+                    'pixel_y':      round(cy),
+                    'box_width':    round(x2 - x1),
+                    'box_height':   round(y2 - y1),
+                })
+
+        gdf = gpd.GeoDataFrame(records, crs=crs.to_wkt())
+
+        shp_dir = job_dir / base_name
+        shp_dir.mkdir(exist_ok=True)
+        gdf.to_file(shp_dir / f'{base_name}.shp')
+
+        # Zip all shapefile components
+        zip_path = job_dir / f'{base_name}.zip'
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for part in shp_dir.iterdir():
+                zf.write(part, arcname=part.name)
+
+        # Clean up unzipped folder
+        import shutil
+        shutil.rmtree(shp_dir)
 
         # 8. Bake detections onto preview and save
         update_status(job_dir, 'running', 97, 'Rendering result preview...')

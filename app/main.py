@@ -239,12 +239,12 @@ async def download_result(job_id: str):
     meta_path = JOBS_DIR / job_id / 'meta.json'
     with open(meta_path) as f:
         meta = json.load(f)
-    filename = os.path.splitext(meta["filename"])[0] + ".geojson"
+    filename = os.path.splitext(meta["filename"])[0] + ".zip"
     p = JOBS_DIR / job_id / filename
     if not p.exists():
         return JSONResponse({'error': 'Not found'}, status_code=404)
     return FileResponse(p, filename=filename,
-                        media_type='application/geo+json')
+                        media_type='application/zip')
 
 
 @app.patch('/api/jobs/{job_id}/ttl')
