@@ -1,7 +1,10 @@
 import numpy as np
 from rasterio.features import geometry_mask
 import geopandas as gpd
+from shapely.geometry import box
 from scipy.ndimage import uniform_filter
+from pyproj.crs import CRS
+from pyproj import Transformer
 
 def build_gshhg_land_mask(transform, shape, bounds, sar_crs, gshhg_shp_path, buffer_meters=10.0):
     """
@@ -18,9 +21,15 @@ def build_gshhg_land_mask(transform, shape, bounds, sar_crs, gshhg_shp_path, buf
     Returns:
         land_mask : boolean numpy array (True = land)
     """
+    gshhg_crs = CRS.from_epsg(4326)
+    transformer_to_geo = Transformer.from_crs(sar_crs, gshhg_crs, always_xy=True)
+
+    lon_left, lat_bottom = transformer_to_geo.transform(bounds.left, bounds.bottom)
+    lon_right, lat_top = transformer_to_geo.transform(bounds.right, bounds.top)
+
     # Load only polygons intersecting the scene extent
     gshhs = gpd.read_file(gshhg_shp_path, bbox=(
-        bounds.left, bounds.bottom, bounds.right, bounds.top
+        lon_left, lat_bottom, lon_right, lat_top
     ))
 
     if gshhs.empty:
@@ -40,6 +49,8 @@ def build_gshhg_land_mask(transform, shape, bounds, sar_crs, gshhg_shp_path, buf
     else:
         gshhs = gshhs.to_crs(sar_crs)
 
+    sar_box = box(bounds.left, bounds.bottom, bounds.right, bounds.top)
+    gshhs = gshhs.clip(sar_box)
     # Rasterize: True where land
     land_mask = geometry_mask(
         geometries=gshhs.geometry,
