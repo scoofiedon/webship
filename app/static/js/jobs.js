@@ -180,8 +180,21 @@ const Jobs = (() => {
   function _download(jobId) {
     var a      = document.createElement('a');
     a.href     = API.resultUrl(jobId);
-    a.download = 'detections.geojson';
-    a.click();
+    
+    // Get the original filename from the job metadata
+    fetch('/api/jobs/' + jobId)
+      .then(response => response.json())
+      .then(job => {
+        var originalName = job.filename;
+        var baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        a.download = baseName + '.geojson';
+        a.click();
+      })
+      .catch(() => {
+        // Fallback to default name if metadata fetch fails
+        a.download = 'detections.geojson';
+        a.click();
+      });
   }
 
   return { refresh };

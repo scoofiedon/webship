@@ -236,11 +236,11 @@ async def get_preview_result(job_id: str):
 
 @app.get('/api/jobs/{job_id}/result')
 async def download_result(job_id: str):
-    p = JOBS_DIR / job_id / 'result.geojson'
     meta_path = JOBS_DIR / job_id / 'meta.json'
     with open(meta_path) as f:
         meta = json.load(f)
     filename = os.path.splitext(meta["filename"])[0] + ".geojson"
+    p = JOBS_DIR / job_id / filename
     if not p.exists():
         return JSONResponse({'error': 'Not found'}, status_code=404)
     return FileResponse(p, filename=filename,
