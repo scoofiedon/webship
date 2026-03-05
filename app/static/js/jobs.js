@@ -45,12 +45,12 @@ const Jobs = (() => {
       '<div class="job-name" title="' + (job.filename || job.job_id) + '">' + (job.filename || job.job_id) + '</div>' +
       '<div class="job-meta">' +
         '<span>' + formatAge(job.created_at) + '</span>' +
-        '<span>Срок: ' + ttlLabel + '</span>' +
+        '<span>Срок хранения: ' + ttlLabel + '</span>' +
       '</div>' +
       (isRun ? '<div class="job-mini-bar"><div class="job-mini-fill" style="width:' + progress + '%"></div></div>' : '') +
       '<div class="job-status-line s-' + job.status + '">' + statusText + '</div>' +
       '<div class="job-actions">' +
-        (isDone ? '<button class="job-btn job-btn-dl" data-action="dl">↓ GeoJSON</button>' : '') +
+        (isDone ? '<button class="job-btn job-btn-dl" data-action="dl">↓ .SHP</button>' : '') +
         '<button class="job-btn job-btn-pin" data-action="pin">' + (job.ttl_minutes === -1 ? 'Открепить' : 'Закрепить ∞') + '</button>' +
         '<button class="job-btn job-btn-del" data-action="del">✕ Удалить</button>' +
       '</div>';
