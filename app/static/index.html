@@ -27,34 +27,22 @@
       <input type="file" id="fi" accept=".tif,.tiff" style="display:none">
     </div>
 
-    <div class="form-group">
-      <label>Model</label>
-      <select id="modelType">
-        <option value="yolo">YOLO26s</option>
-        <option value="fasterrcnn">Faster R-CNN</option>
-        <option value="traditional">CA-CFAR (Traditional)</option>
-      </select>
-    </div>
 
-    <!-- SAR Parameters -->
-    <div class="section-title">SAR Parameters</div>
-
-    <div class="form-group">
-      <label>Polarization</label>
-      <select id="polarization">
-        <option value="VV">VV</option>
-        <option value="VH">VH</option>
-        <option value="HH">HH</option>
-        <option value="HV">HV</option>
-      </select>
-    </div>
-
+        <!-- SAR Parameters -->
     <div class="form-group">
       <label>Input format</label>
       <select id="inputFormat">
-        <option value="byte">Byte 0–255 (SNAP / QGIS export)</option>
+        <option value="byte">Byte 0–255</option>
         <option value="db">dB sigma0</option>
         <option value="linear">Linear sigma0</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Model</label>
+      <select id="modelType">
+        <option value="traditional">CA-CFAR (Traditional)</option>
+        <option value="yolo">YOLO26s</option>
       </select>
     </div>
 
@@ -111,14 +99,14 @@
     </div>
 
     <!-- Traditional Detection Parameters -->
-    <div class="section-title" id="traditionalParams" style="display:none;">Traditional Detection</div>
+    <div class="section-title" id="traditionalParams">Traditional Detection</div>
 
-    <div id="traditionalParamsContent" style="display:none;">
+    <div id="traditionalParamsContent">
       <div class="form-group">
         <label>PFA (False Alarm Rate)</label>
         <div class="range-row">
-          <input type="range" id="pfa" min="1e-7" max="1e-2" step="1e-6" value="1e-3">
-          <span class="range-val" id="pfaVal">1e-3</span>
+          <input type="range" id="pfa" min="2" max="7" step="0.5" value="3.5">
+          <span class="range-val" id="pfaVal">3.5</span>
         </div>
       </div>
 
@@ -145,20 +133,12 @@
           <span class="range-val" id="bufferMetersVal">5</span>
         </div>
       </div>
-
-      <div class="form-group">
-        <label>Coast Dilation (pixels)</label>
-        <div class="range-row">
-          <input type="range" id="extraDilationPx" min="0" max="10" step="1" value="3">
-          <span class="range-val" id="extraDilationPxVal">3</span>
-        </div>
-      </div>
     </div>
 
     <!-- Contrast Enhancement -->
-    <div class="section-title">Contrast Enhancement</div>
+    <div class="section-title" id ="contrastParamsTitle">Contrast Enhancement</div>
 
-    <div class="form-group check-row">
+    <div class="form-group check-row" id="contrastParamsToggle">
       <input type="checkbox" id="contrastEnabled">
       <label for="contrastEnabled">Enable contrast enhancement</label>
     </div>

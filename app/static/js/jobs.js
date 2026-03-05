@@ -118,16 +118,28 @@ const Jobs = (() => {
 
     // ── Top-level ──────────────────────────────────────
     _setVal('modelType',    p.model_type   || '');
-    _setVal('polarization', p.polarization || '');
     _setVal('inputFormat',  p.input_format || '');
     _setVal('windowSize',   p.window_size  || 800);
     _setVal('targetSize',   p.target_size  || 800);
     _setVal('ttlMinutes',   job.ttl_minutes !== undefined ? job.ttl_minutes : 60);
 
+    // Trigger model type toggle to show/hide appropriate parameter blocks
+    const modelTypeEl = document.getElementById('modelType');
+    if (modelTypeEl) {
+      // Trigger change event to update visibility
+      modelTypeEl.dispatchEvent(new Event('change'));
+    }
+
     // ── Detection sliders ──────────────────────────────
-    _setSlider('overlapPct',  p.overlap_pct  !== undefined ? p.overlap_pct  : 0.25, 'overlapVal', function(v){ return Math.round(v*100)+'%'; });
-    _setSlider('scoreThresh', p.score_thresh !== undefined ? p.score_thresh : 0.3,  'scoreVal',   function(v){ return (+v).toFixed(2); });
-    _setSlider('nmsIou',      p.nms_iou      !== undefined ? p.nms_iou      : 0.3,  'nmsVal',     function(v){ return (+v).toFixed(2); });
+    _setSlider('overlapPct',    p.overlap_pct  !== undefined ? p.overlap_pct  : 0.25, 'overlapVal', function(v){ return Math.round(v*100)+'%'; });
+    _setSlider('scoreThresh',   p.score_thresh !== undefined ? p.score_thresh : 0.3,  'scoreVal',   function(v){ return (+v).toFixed(2); });
+    _setSlider('nmsIou',        p.nms_iou      !== undefined ? p.nms_iou      : 0.3,  'nmsVal',     function(v){ return (+v).toFixed(2); });
+
+    // ── Tradition detection sliders  ──────────────────────────────
+    _setSlider('pfa',             p.pfa               !== undefined ? p.pfa               : 3.5,  'pfaVal',             function(v){ return (+v).toFixed(2); });
+    _setSlider('guard',           p.guard             !== undefined ? p.guard             : 4,    'guardVal',           function(v){ return v; });
+    _setSlider('train',           p.train             !== undefined ? p.train             : 8,    'trainVal',           function(v){ return v; });
+    _setSlider('bufferMeters',    p.buffer_meters     !== undefined ? p.buffer_meters     : 5,    'bufferMetersVal',    function(v){ return v; });
 
     // ── Contrast ───────────────────────────────────────
     const c = p.contrast || {};

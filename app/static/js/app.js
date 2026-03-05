@@ -15,11 +15,10 @@ window.addEventListener('load', async () => {
   _wireRange('gamma',       'gammaV',     v => (+v).toFixed(1));
   
   // Traditional detection parameters
-  _wireRange('pfa',              'pfaVal',     v => (+v).toExponential(1));
+  _wireRange('pfa',              'pfaVal',     v => v);
   _wireRange('guard',            'guardVal',   v => v);
   _wireRange('train',            'trainVal',   v => v);
   _wireRange('bufferMeters',       'bufferMetersVal', v => v);
-  _wireRange('extraDilationPx', 'extraDilationPxVal', v => v);
 
   // Wire buttons
   document.getElementById('runBtn').onclick   = () => Sidebar.submitJob();

@@ -1,4 +1,4 @@
-import os, gc, json, time
+import os, gc, json
 import numpy as np
 from pathlib import Path
 
@@ -60,7 +60,7 @@ def enhance_contrast(arr: np.ndarray, method: str = 'percentile',
     return arr
 
 
-def preprocess_patch(patch: np.ndarray, polarization: str,
+def preprocess_patch(patch: np.ndarray,
                      input_format: str,
                      contrast_params: dict,
                      target_size: int = None) -> np.ndarray:
@@ -169,8 +169,7 @@ def bake_detections(preview_img: 'PIL.Image.Image',
 def filter_land_detections(all_boxes, all_scores, all_labels,
                             transform, image_shape: tuple,
                             bounds, crs,
-                            buffer_meters: float = 10.0,
-                            extra_dilation_px: int = 3):
+                            buffer_meters: float = 10.0):
     """
     Build a land mask for the full image extent, then drop every detection
     whose centre pixel falls on land.  Runs once after global NMS, so the
@@ -216,7 +215,7 @@ def run_inference_job(job_id: str, image_path: str,
             H, W      = src.height, src.width
 
         contrast_params = params.get('contrast', {
-            'enabled': True, 'method': 'percentile',
+            'enabled': False, 'method': 'percentile',
             'percentile_low': 2.0, 'percentile_high': 98.0,
             'gamma': 1.0, 'clahe': True
         })
@@ -236,7 +235,6 @@ def run_inference_job(job_id: str, image_path: str,
         overlap_pct  = params['overlap_pct']
         score_thresh = params['score_thresh']
         nms_iou      = params['nms_iou']
-        polarization = params['polarization']
         input_format = params['input_format']
         device       = params.get('device', 'cpu')
         target_size  = params.get('target_size', 800)
@@ -261,14 +259,6 @@ def run_inference_job(job_id: str, image_path: str,
             model = YOLO(str(MODELS_DIR / 'best.pt'))
         elif model_type == 'traditional':
             model = None
-        else:
-            from model import get_faster_rcnn
-            model = get_faster_rcnn(num_classes=2, pretrained=False,
-                                    freeze_backbone=False)
-            model.load_state_dict(
-                torch.load(str(MODELS_DIR / 'fasterrcnn_weights.pth'),
-                           map_location='cpu'))
-            model.eval()
 
         all_boxes, all_scores, all_labels = [], [], []
 
@@ -286,11 +276,12 @@ def run_inference_job(job_id: str, image_path: str,
                     del patch
 
                     from traditional_detection import ca_cfar_fast
+                    pfa = params.get('pfa', 3.5)
                     detections = ca_cfar_fast(
                         patch_linear,
                         guard=params.get('guard', 4),
                         train=params.get('train', 16),
-                        pfa=params.get('pfa', 1e-6),
+                        pfa=pow(10, -pfa)
                     )
                     del patch_linear
 
@@ -324,7 +315,7 @@ def run_inference_job(job_id: str, image_path: str,
 
                 else:
                     patch_rgb = preprocess_patch(
-                        patch, polarization, input_format, contrast_params,
+                        patch, input_format, contrast_params,
                         target_size if window_size < target_size else None)
                     del patch
 
@@ -341,20 +332,6 @@ def run_inference_job(job_id: str, image_path: str,
                         boxes  = result.boxes.xyxy.cpu().clone()
                         scores = result.boxes.conf.cpu().clone()
                         labels = result.boxes.cls.cpu().int().clone()
-                    else:
-                        tensor = torch.from_numpy(
-                            patch_rgb[:, :, 0].astype(np.float32) / 255.0
-                        ).unsqueeze(0).unsqueeze(0)
-                        del patch_rgb
-                        with torch.no_grad():
-                            out = model(tensor)[0]
-                        del tensor
-                        boxes  = out['boxes'].cpu()
-                        scores = out['scores'].cpu()
-                        labels = out['labels'].cpu().int()
-                        keep   = scores > score_thresh
-                        boxes, scores, labels = (boxes[keep], scores[keep],
-                                                 labels[keep])
 
                 # Scale box coords back to original patch space if interpolated
                 if window_size < target_size:
@@ -395,9 +372,8 @@ def run_inference_job(job_id: str, image_path: str,
             all_boxes, all_scores, all_labels = filter_land_detections(
                 all_boxes, all_scores, all_labels,
                 transform, (H, W), bounds, crs,
-                buffer_meters     = params.get('buffer_meters', 10.0),
-                extra_dilation_px = params.get('extra_dilation_px', 3),
-            )
+                buffer_meters     = params.get('buffer_meters', 10.0)
+                )
         n_det = len(all_boxes)
 
         # 7. Build GeoJSON
@@ -431,7 +407,7 @@ def run_inference_job(job_id: str, image_path: str,
                      'properties': {'name': crs.to_string()}},
             'features': features
         }
-        with open(job_dir / 'result.geojson', 'w') as f:
+        with open(job_dir / f'{os.path.splitext(os.path.basename(image_path))[0]}.geojson', 'w') as f:
             json.dump(geojson, f, indent=2)
 
         # 8. Bake detections onto preview and save

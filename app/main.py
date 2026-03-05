@@ -1,8 +1,13 @@
-import os, uuid, json, asyncio, time, shutil, io
+import os
+import uuid
+import json
+import asyncio
+import time
+import shutil
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Form, Request, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import aiofiles
 import redis
@@ -96,7 +101,6 @@ async def submit_job(
     request:          Request,
     file:             UploadFile = File(...),
     model_type:       str   = Form('yolo'),
-    polarization:     str   = Form('VV'),
     input_format:     str   = Form('byte'),
     window_size:      int   = Form(800),
     overlap_pct:      float = Form(0.25),
@@ -111,11 +115,10 @@ async def submit_job(
     clahe:            bool  = Form(True),
     target_size:      int   = Form(800),
     # Traditional detection parameters
-    pfa:              float = Form(1e-6),
+    pfa:              float = Form(3.5),
     guard:            int   = Form(4),
     train:            int   = Form(16),
     buffer_meters:    float = Form(10.0), 
-    extra_dilation_px: int  = Form(3),
 ):
     job_id  = str(uuid.uuid4())
     job_dir = JOBS_DIR / job_id
@@ -126,21 +129,13 @@ async def submit_job(
     total_size    = int(request.headers.get('content-length', 0))
     uploaded_size = 0
 
-    async with aiofiles.open(image_path, 'wb') as out:
-        while chunk := await file.read(1024 * 1024):
-            await out.write(chunk)
-            uploaded_size += len(chunk)
-            progress = int(uploaded_size / total_size * 10) if total_size else 0
-            with open(job_dir / 'status.json', 'w') as f:
-                json.dump({'status': 'uploading', 'progress': progress,
-                           'message': f'Uploading {uploaded_size//1024//1024}MB...'}, f)
+    
 
     params = {
         'model_type': model_type,
         'window_size': window_size, 'overlap_pct': overlap_pct,
         'score_thresh': score_thresh, 'nms_iou': nms_iou,
-        'polarization': polarization, 'input_format': input_format,
-        'target_size': target_size,
+        'input_format': input_format, 'target_size': target_size,
         'device': 'cpu',
         'contrast': {
             'enabled': contrast_enabled, 'method': contrast_method,
@@ -156,8 +151,6 @@ async def submit_job(
             'guard': guard,
             'train': train,
             'buffer_meters': buffer_meters,
-            'extra_dilation_px': extra_dilation_px,
-            'gshhg_path': './gshhg/GSHHS_f_L1.shp'  # Path to GSHHG data - REQUIRED for production
         })
 
     with open(job_dir / 'meta.json', 'w') as f:
@@ -168,6 +161,19 @@ async def submit_job(
             'params':      params,
         }, f)
 
+    with open(job_dir / 'status.json', 'w') as f:
+        json.dump({'status': 'loading image', 'progress': 5,
+                   'message': 'Loading image...'}, f)
+
+    async with aiofiles.open(image_path, 'wb') as out:
+        while chunk := await file.read(1024 * 1024):
+            await out.write(chunk)
+            uploaded_size += len(chunk)
+            progress = int(uploaded_size / total_size * 10) if total_size else 0
+            with open(job_dir / 'status.json', 'w') as f:
+                json.dump({'status': 'uploading', 'progress': progress,
+                           'message': f'Uploading {uploaded_size//1024//1024}MB...'}, f)
+        
     with open(job_dir / 'status.json', 'w') as f:
         json.dump({'status': 'queued', 'progress': 10,
                    'message': 'Queued...'}, f)
@@ -231,9 +237,13 @@ async def get_preview_result(job_id: str):
 @app.get('/api/jobs/{job_id}/result')
 async def download_result(job_id: str):
     p = JOBS_DIR / job_id / 'result.geojson'
+    meta_path = JOBS_DIR / job_id / 'meta.json'
+    with open(meta_path) as f:
+        meta = json.load(f)
+    filename = os.path.splitext(meta["filename"])[0] + ".geojson"
     if not p.exists():
         return JSONResponse({'error': 'Not found'}, status_code=404)
-    return FileResponse(p, filename='detections.geojson',
+    return FileResponse(p, filename=filename,
                         media_type='application/geo+json')
 
 

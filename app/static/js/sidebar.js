@@ -43,19 +43,36 @@ const Sidebar = {
   },
 
   initModelTypeToggle() {
-    document.getElementById('traditionalParams').style.display = 'none';
-    document.getElementById('traditionalParamsContent').style.display = 'none';
-    
-    document.getElementById('modelType').addEventListener('change', function() {
-      const isTraditional = this.value === 'traditional';
+    const isTraditional = document.getElementById('modelType').value === 'traditional';
+
+    document.getElementById('traditionalParams').style.display = 
+        isTraditional ? 'block' : 'none';
+    document.getElementById('traditionalParamsContent').style.display = 
+        isTraditional ? 'block' : 'none';
+
+    const neuralNetParams = ["contrastParamsToggle",
+      'targetSize', 'contrastEnabled', 'contrastMethod', 
+      'percLow', 'percHigh', 'gamma', 'clahe'];
+
+    document.getElementById('contrastParamsTitle').style.display = isTraditional ? 'none' : 'block';
+
+    neuralNetParams.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.closest('.form-group').style.display = isTraditional ? 'none' : 'block';
+        }
+      });
+
+    // Create a helper function to avoid code duplication
+    function updateVisibility() {
+      const isTraditional = document.getElementById('modelType').value === 'traditional';
+
       document.getElementById('traditionalParams').style.display = 
-        isTraditional ? 'block' : 'none';
+          isTraditional ? 'block' : 'none';
       document.getElementById('traditionalParamsContent').style.display = 
-        isTraditional ? 'block' : 'none';
+          isTraditional ? 'block' : 'none';
       
-      // Hide/show neural network specific parameters
-      const neuralNetParams = ['targetSize', 'contrastEnabled', 'contrastMethod', 
-                              'percLow', 'percHigh', 'gamma', 'clahe'];
+      document.getElementById('contrastParamsTitle').style.display = isTraditional ? 'none' : 'block';
       neuralNetParams.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -63,7 +80,13 @@ const Sidebar = {
             isTraditional ? 'none' : 'block';
         }
       });
-    });
+    }
+
+    // Call the helper function initially
+    updateVisibility();
+    
+
+    document.getElementById('modelType').addEventListener('change', updateVisibility);
   },
 
   setProgress(pct, mode = '') {
@@ -105,7 +128,6 @@ const Sidebar = {
     const fd = new FormData();
     fd.append('file',             file);
     fd.append('model_type',       _val('modelType'));
-    fd.append('polarization',     _val('polarization'));
     fd.append('input_format',     _val('inputFormat'));
     fd.append('window_size',      _val('windowSize'));
     fd.append('overlap_pct',      _val('overlapPct'));
@@ -125,8 +147,7 @@ const Sidebar = {
       fd.append('pfa',              _val('pfa'));
       fd.append('guard',            _val('guard'));
       fd.append('train',            _val('train'));
-      fd.append('buffer_meters',       _val('bufferMeters'));
-      fd.append('extra_dilation_px', _val('extraDilationPx'));
+      fd.append('buffer_meters',    _val('bufferMeters'));
     }
 
     document.getElementById('runBtn').disabled        = true;
