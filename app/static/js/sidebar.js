@@ -154,16 +154,16 @@ const Sidebar = {
     document.getElementById('newBtn').disabled        = false;
     document.getElementById('abortBtn').style.display = 'block';
     Sidebar.setProgress(0);
-    Sidebar.setStatus('Uploading...');
+    Sidebar.setStatus('Загрузка...');
 
     let jobId;
     try {
       jobId = await API.submitJob(fd, (loaded, total) => {
         Sidebar.setProgress(Math.round(loaded / total * 10));
-        Sidebar.setStatus('Uploading ' + _mb(loaded) + ' / ' + _mb(total) + ' MB');
+        Sidebar.setStatus('Загрузка ' + _mb(loaded) + ' / ' + _mb(total) + ' МБ');
       });
     } catch(e) {
-      Sidebar.setStatus('Upload failed: ' + e.message);
+      Sidebar.setStatus('Ошибка загрузки: ' + e.message);
       Sidebar.resetRunUI();
       return;
     }
@@ -183,7 +183,7 @@ const Sidebar = {
     if (jobId) {
       await API.deleteJob(jobId);
       if (State.get('viewJobId') === jobId) {
-        Preview.showEmpty('Job aborted');
+        Preview.showEmpty('Задача отменена');
         State.setViewJobId(null);
         document.getElementById('previewFilename').textContent = '';
         document.getElementById('detCount').textContent        = '';
@@ -191,7 +191,7 @@ const Sidebar = {
       State.set('activeJobId', null);
     }
     Sidebar.resetRunUI();
-    Sidebar.setStatus('Aborted.');
+    Sidebar.setStatus('Отменено.');
     Sidebar.setProgress(0);
     Jobs.refresh();
   },

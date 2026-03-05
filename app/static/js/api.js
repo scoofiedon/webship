@@ -51,7 +51,7 @@ const API = {
           reject(new Error('HTTP ' + xhr.status));
         }
       };
-      xhr.onerror = function() { reject(new Error('Network error')); };
+      xhr.onerror = function() { reject(new Error('Ошибка сети')); };
       xhr.open('POST', '/api/jobs');
       xhr.send(formData);
     });

@@ -203,7 +203,7 @@ def run_inference_job(job_id: str, image_path: str,
     import rasterio
 
     job_dir = JOBS_DIR / job_id
-    update_status(job_dir, 'running', 5, 'Loading image...')
+    update_status(job_dir, 'running', 5, 'Загрузка изображения...')
 
     try:
         # 1. Load full image
@@ -221,14 +221,14 @@ def run_inference_job(job_id: str, image_path: str,
         })
 
         # 2. Generate and save preview
-        update_status(job_dir, 'running', 10, 'Generating preview...')
+        update_status(job_dir, 'running', 10, 'Создание предпросмотра...')
         preview_img, scale = make_preview(image_np, contrast_params)
         (job_dir / 'preview.png').write_bytes(b'')          # touch
         preview_img.save(job_dir / 'preview.png', format='PNG')
 
         # 3. Delete original file to reclaim disk space
         os.remove(image_path)
-        update_status(job_dir, 'running', 15, 'Running inference...')
+        update_status(job_dir, 'running', 15, 'Выполнение обнаружения...')
 
         # 4. Sliding-window inference
         window_size  = params['window_size']
@@ -267,7 +267,7 @@ def run_inference_job(job_id: str, image_path: str,
                 patch_num = yi * len(x_starts) + xi + 1
                 progress  = 15 + int(patch_num / total * 72)
                 update_status(job_dir, 'running', progress,
-                              f'Patch {patch_num}/{total}')
+                              f'Обработка фрагмента {patch_num}/{total}')
 
                 patch = image_np[y:y+window_size, x:x+window_size]
 
@@ -350,7 +350,7 @@ def run_inference_job(job_id: str, image_path: str,
         gc.collect()
 
         # 5. Global NMS
-        update_status(job_dir, 'running', 89, 'Applying NMS...')
+        update_status(job_dir, 'running', 89, 'Применение NMS...')
         if all_boxes:
             from torchvision.ops import nms as tv_nms
             all_boxes  = torch.cat(all_boxes)
@@ -367,7 +367,7 @@ def run_inference_job(job_id: str, image_path: str,
 
         # 6. Drop detections whose centre falls on land
         #    Land mask is built here — once, on the already-filtered set.
-        update_status(job_dir, 'running', 92, 'Filtering land detections...')
+        update_status(job_dir, 'running', 92, 'Фильтрация обнаружений на суше...')
         if len(all_boxes) > 0:
             all_boxes, all_scores, all_labels = filter_land_detections(
                 all_boxes, all_scores, all_labels,
@@ -377,7 +377,7 @@ def run_inference_job(job_id: str, image_path: str,
         n_det = len(all_boxes)
 
         # 7. Build GeoJSON
-        update_status(job_dir, 'running', 95, 'Building results...')
+        update_status(job_dir, 'running', 95, 'Создание результатов...')
         import zipfile
         from shapely.geometry import Point
         import geopandas as gpd
@@ -436,14 +436,14 @@ def run_inference_job(job_id: str, image_path: str,
         shutil.rmtree(shp_dir)
 
         # 8. Bake detections onto preview and save
-        update_status(job_dir, 'running', 97, 'Rendering result preview...')
+        update_status(job_dir, 'running', 97, 'Отрисовка результата...')
         result_img = bake_detections(preview_img, features, scale)
         result_img.save(job_dir / 'preview_result.png', format='PNG')
 
         # 9. Done
         del model
         gc.collect()
-        update_status(job_dir, 'done', 100, f'{n_det} ships detected')
+        update_status(job_dir, 'done', 100, f'Обнаружено кораблей: {n_det}')
 
     except Exception as e:
         update_status(job_dir, 'error', 0, str(e))

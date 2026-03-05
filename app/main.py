@@ -73,7 +73,7 @@ async def list_jobs():
             with open(meta_path)   as f: meta   = json.load(f)
             
             # Handle status.json with error tolerance
-            status = {'status': 'unknown', 'progress': 0, 'message': ''}
+            status = {'status': 'неизвестно', 'progress': 0, 'message': ''}
             if status_path.exists():
                 try:
                     with open(status_path) as f:
@@ -163,7 +163,7 @@ async def submit_job(
 
     with open(job_dir / 'status.json', 'w') as f:
         json.dump({'status': 'loading image', 'progress': 5,
-                   'message': 'Loading image...'}, f)
+                   'message': 'Загрузка изображения...'}, f)
 
     async with aiofiles.open(image_path, 'wb') as out:
         while chunk := await file.read(1024 * 1024):
@@ -172,11 +172,11 @@ async def submit_job(
             progress = int(uploaded_size / total_size * 10) if total_size else 0
             with open(job_dir / 'status.json', 'w') as f:
                 json.dump({'status': 'uploading', 'progress': progress,
-                           'message': f'Uploading {uploaded_size//1024//1024}MB...'}, f)
+                           'message': f'Загрузка {uploaded_size//1024//1024}МБ...'}, f)
         
     with open(job_dir / 'status.json', 'w') as f:
         json.dump({'status': 'queued', 'progress': 10,
-                   'message': 'Queued...'}, f)
+                   'message': 'В очереди...'}, f)
 
     q.enqueue(
         'inference_jobs.run_inference_job',
@@ -190,7 +190,7 @@ async def submit_job(
 async def job_status(job_id: str):
     p = JOBS_DIR / job_id / 'status.json'
     if not p.exists():
-        return JSONResponse({'error': 'Not found'}, status_code=404)
+        return JSONResponse({'error': 'Не найдено'}, status_code=404)
     
     try:
         # Read file with retry logic to handle race conditions
@@ -204,23 +204,23 @@ async def job_status(job_id: str):
                             await asyncio.sleep(0.1)
                             continue
                         else:
-                            return JSONResponse({'error': 'Status file is empty'}, status_code=500)
+                            return JSONResponse({'error': 'Файл статуса пуст'}, status_code=500)
                     return json.loads(content)
             except (json.JSONDecodeError, IOError) as e:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(0.1)
                     continue
                 else:
-                    return JSONResponse({'error': f'Error reading status: {str(e)}'}, status_code=500)
+                    return JSONResponse({'error': f'Ошибка чтения статуса: {str(e)}'}, status_code=500)
     except Exception as e:
-        return JSONResponse({'error': f'Unexpected error: {str(e)}'}, status_code=500)
+        return JSONResponse({'error': f'Неожиданная ошибка: {str(e)}'}, status_code=500)
 
 
 @app.get('/api/jobs/{job_id}/preview')
 async def get_preview(job_id: str):
     p = JOBS_DIR / job_id / 'preview.png'
     if not p.exists():
-        return JSONResponse({'error': 'Not found'}, status_code=404)
+        return JSONResponse({'error': 'Не найдено'}, status_code=404)
     return FileResponse(p, media_type='image/png',
                         headers={'Cache-Control': 'no-cache'})
 
@@ -229,7 +229,7 @@ async def get_preview(job_id: str):
 async def get_preview_result(job_id: str):
     p = JOBS_DIR / job_id / 'preview_result.png'
     if not p.exists():
-        return JSONResponse({'error': 'Not found'}, status_code=404)
+        return JSONResponse({'error': 'Не найдено'}, status_code=404)
     return FileResponse(p, media_type='image/png',
                         headers={'Cache-Control': 'no-cache'})
 
@@ -242,7 +242,7 @@ async def download_result(job_id: str):
     filename = os.path.splitext(meta["filename"])[0] + ".zip"
     p = JOBS_DIR / job_id / filename
     if not p.exists():
-        return JSONResponse({'error': 'Not found'}, status_code=404)
+        return JSONResponse({'error': 'Не найдено'}, status_code=404)
     return FileResponse(p, filename=filename,
                         media_type='application/zip')
 
@@ -251,7 +251,7 @@ async def download_result(job_id: str):
 async def update_ttl(job_id: str, ttl_minutes: int):
     meta_path = JOBS_DIR / job_id / 'meta.json'
     if not meta_path.exists():
-        return JSONResponse({'error': 'Not found'}, status_code=404)
+        return JSONResponse({'error': 'Не найдено'}, status_code=404)
     with open(meta_path) as f:
         meta = json.load(f)
     meta['ttl_minutes'] = ttl_minutes

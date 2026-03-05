@@ -67,13 +67,13 @@ const Poller = (() => {
 
       if (isActive && !opts.previewOnly) {
         Sidebar.setProgress(100, 'error');
-        Sidebar.setStatus('Error: ' + (data.message || 'unknown'));
+        Sidebar.setStatus('Ошибка: ' + (data.message || 'неизвестно'));
         Sidebar.resetRunUI();
         State.set('activeJobId', null);
       }
 
       if (isViewing) {
-        Preview.showEmpty('Job failed: ' + (data.message || ''));
+        Preview.showEmpty('Задача не выполнена: ' + (data.message || ''));
       }
 
       Jobs.refresh();

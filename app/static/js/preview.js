@@ -5,7 +5,7 @@ const Preview = (() => {
 
   function _panel() { return document.getElementById('panel'); }
 
-  function showEmpty(msg = 'Submit a job to see preview') {
+  function showEmpty(msg = 'Отправьте задачу для просмотра') {
     _panel().innerHTML = `
       <div class="preview-empty">
         <span class="preview-empty-icon">🛰</span>
@@ -13,7 +13,7 @@ const Preview = (() => {
       </div>`;
   }
 
-  function showSpinner(msg = 'Processing...') {
+  function showSpinner(msg = 'Обработка...') {
     _panel().innerHTML = `
       <div class="preview-empty">
         <div class="spinner"></div>
@@ -57,7 +57,7 @@ const Preview = (() => {
       if (attempt < 8) {
         setTimeout(() => loadImage(jobId, withDetections, attempt + 1), 2000);
       } else {
-        showEmpty('Preview unavailable');
+        showEmpty('Предпросмотр недоступен');
       }
     };
 
@@ -68,8 +68,8 @@ const Preview = (() => {
     const ov = document.createElement('div');
     ov.className = 'preview-overlay';
     ov.innerHTML = `
-      <button class="pill ${withDetections ? 'active' : ''}"  id="pillDet">Detections</button>
-      <button class="pill ${!withDetections ? 'active' : ''}" id="pillRaw">Raw</button>`;
+      <button class="pill ${withDetections ? 'active' : ''}"  id="pillDet">Обнаружения</button>
+      <button class="pill ${!withDetections ? 'active' : ''}" id="pillRaw">Исходное</button>`;
     panel.appendChild(ov);
 
     document.getElementById('pillDet').onclick = () => toggle(jobId, true);
@@ -93,11 +93,11 @@ const Preview = (() => {
                (statusData.progress || 0) >= 15) {
       loadImage(jobId, false);
     } else if (s === 'queued' || s === 'uploading') {
-      showSpinner('Queued — preview will appear soon...');
+      showSpinner('В очереди — предпросмотр скоро появится...');
     } else if (s === 'running') {
-      showSpinner('Processing...');
+      showSpinner('Обработка...');
     } else if (s === 'error') {
-      showEmpty('Job failed');
+      showEmpty('Задача не выполнена');
     } else {
       showEmpty();
     }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SAR Ship Detector</title>
+<title>SAR Детектор Кораблей</title>
 <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
@@ -11,18 +11,18 @@
 <!-- ── Sidebar ─────────────────────────────────────────── -->
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>⚓ SAR Ship Detector</h1>
+    <h1>⚓ SAR Детектор Кораблей</h1>
   </div>
 
   <div class="sidebar-body">
 
     <!-- Input -->
-    <div class="section-title">Input</div>
+    <div class="section-title">Входные данные</div>
 
     <div class="form-group">
       <div class="drop-zone" id="dropZone">
         <span class="drop-icon">📡</span>
-        <div id="dropLabel">Drop GeoTIFF or click to browse</div>
+        <div id="dropLabel">Перетащите GeoTIFF или нажмите для выбора</div>
       </div>
       <input type="file" id="fi" accept=".tif,.tiff" style="display:none">
     </div>
@@ -30,27 +30,27 @@
 
         <!-- SAR Parameters -->
     <div class="form-group">
-      <label>Input format</label>
+      <label>Формат входных данных</label>
       <select id="inputFormat">
-        <option value="byte">Byte 0–255</option>
-        <option value="db">dB sigma0</option>
-        <option value="linear">Linear sigma0</option>
+        <option value="byte">Байт 0–255</option>
+        <option value="db">дБ sigma0</option>
+        <option value="linear">Линейный sigma0</option>
       </select>
     </div>
 
     <div class="form-group">
-      <label>Model</label>
+      <label>Модель</label>
       <select id="modelType">
-        <option value="traditional">CA-CFAR (Traditional)</option>
+        <option value="traditional">CA-CFAR (Традиционный)</option>
         <option value="yolo">YOLO26s</option>
       </select>
     </div>
 
     <!-- Detection -->
-    <div class="section-title">Detection</div>
+    <div class="section-title">Обнаружение</div>
 
     <div class="form-group">
-      <label>Window size (px)</label>
+      <label>Размер окна (пикс.)</label>
       <select id="windowSize">
         <option value="192">192</option>
         <option value="320">320</option>
@@ -65,17 +65,17 @@
     </div>
 
     <div class="form-group">
-      <label>Target size for interpolation (px)</label>
+      <label>Целевой размер для интерполяции (пикс.)</label>
       <select id="targetSize">
         <option value="512">512</option>
         <option value="800" selected>800</option>
         <option value="1024">1024</option>
       </select>
-      <small style="color: var(--text-faint);">Interpolate smaller windows to match HRSID training data</small>
+      <small style="color: var(--text-faint);">Интерполировать меньшие окна для соответствия данным обучения HRSID</small>
     </div>
 
     <div class="form-group">
-      <label>Overlap</label>
+      <label>Перекрытие</label>
       <div class="range-row">
         <input type="range" id="overlapPct" min="0" max="0.75" step="0.05" value="0.25">
         <span class="range-val" id="overlapVal">25%</span>
@@ -83,7 +83,7 @@
     </div>
 
     <div class="form-group">
-      <label>Score threshold</label>
+      <label>Порог уверенности</label>
       <div class="range-row">
         <input type="range" id="scoreThresh" min="0.05" max="0.95" step="0.05" value="0.3">
         <span class="range-val" id="scoreVal">0.30</span>
@@ -99,11 +99,11 @@
     </div>
 
     <!-- Traditional Detection Parameters -->
-    <div class="section-title" id="traditionalParams">Traditional Detection</div>
+    <div class="section-title" id="traditionalParams">Традиционное обнаружение</div>
 
     <div id="traditionalParamsContent">
       <div class="form-group">
-        <label>PFA (False Alarm Rate)</label>
+        <label>PFA (Частота ложных тревог)</label>
         <div class="range-row">
           <input type="range" id="pfa" min="2" max="7" step="0.5" value="3.5">
           <span class="range-val" id="pfaVal">3.5</span>
@@ -111,7 +111,7 @@
       </div>
 
       <div class="form-group">
-        <label>Guard Cells</label>
+        <label>Защитные ячейки</label>
         <div class="range-row">
           <input type="range" id="guard" min="1" max="10" step="1" value="4">
           <span class="range-val" id="guardVal">4</span>
@@ -119,7 +119,7 @@
       </div>
 
       <div class="form-group">
-        <label>Training Cells</label>
+        <label>Обучающие ячейки</label>
         <div class="range-row">
           <input type="range" id="train" min="8" max="32" step="4" value="8">
           <span class="range-val" id="trainVal">8</span>
@@ -127,7 +127,7 @@
       </div>
 
       <div class="form-group">
-        <label>Land Buffer (meters)</label>
+        <label>Буфер суши (метры)</label>
         <div class="range-row">
           <input type="range" id="bufferMeters" min="0" max="100" step="2" value="5">
           <span class="range-val" id="bufferMetersVal">5</span>
@@ -136,24 +136,24 @@
     </div>
 
     <!-- Contrast Enhancement -->
-    <div class="section-title" id ="contrastParamsTitle">Contrast Enhancement</div>
+    <div class="section-title" id ="contrastParamsTitle">Улучшение контраста</div>
 
     <div class="form-group check-row" id="contrastParamsToggle">
       <input type="checkbox" id="contrastEnabled">
-      <label for="contrastEnabled">Enable contrast enhancement</label>
+      <label for="contrastEnabled">Включить улучшение контраста</label>
     </div>
 
     <div id="contrastParams">
       <div class="form-group">
-        <label>Method</label>
+        <label>Метод</label>
         <select id="contrastMethod">
-          <option value="percentile">Percentile stretch (recommended)</option>
-          <option value="minmax">Min-max stretch</option>
+          <option value="percentile">Процентильная нормализация (рекомендуется)</option>
+          <option value="minmax">Мин-макс нормализация</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>Low percentile</label>
+        <label>Нижний процентиль</label>
         <div class="range-row">
           <input type="range" id="percLow" min="0" max="10" step="0.5" value="5">
           <span class="range-val" id="percLowV">5%</span>
@@ -161,7 +161,7 @@
       </div>
 
       <div class="form-group">
-        <label>High percentile</label>
+        <label>Верхний процентиль</label>
         <div class="range-row">
           <input type="range" id="percHigh" min="90" max="100" step="0.5" value="95">
           <span class="range-val" id="percHighV">95%</span>
@@ -169,7 +169,7 @@
       </div>
 
       <div class="form-group">
-        <label>Gamma  &nbsp;<span style="color:var(--text-faint)">(1.0 = unchanged · &lt;1 brighter)</span></label>
+        <label>Гамма  &nbsp;<span style="color:var(--text-faint)">(1.0 = без изменений · &lt;1 ярче)</span></label>
         <div class="range-row">
           <input type="range" id="gamma" min="0.3" max="3.0" step="0.1" value="1.0">
           <span class="range-val" id="gammaV">1.0</span>
@@ -178,24 +178,24 @@
 
       <div class="form-group check-row">
         <input type="checkbox" id="clahe">
-        <label for="clahe">CLAHE &nbsp;<span style="color:var(--text-faint)">(best for ship visibility)</span></label>
+        <label for="clahe">CLAHE &nbsp;<span style="color:var(--text-faint)">(лучше для видимости кораблей)</span></label>
       </div>
     </div>
 
     <!-- Storage -->
-    <div class="section-title">Storage</div>
+    <div class="section-title">Хранение</div>
 
     <div class="form-group">
-      <label>Auto-delete after (minutes · −1 = never)</label>
+      <label>Автоудаление через (минуты · −1 = никогда)</label>
       <input type="number" id="ttlMinutes" value="60" min="-1" step="10">
     </div>
 
     <!-- Actions -->
-    <div class="section-title">Run</div>
+    <div class="section-title">Запуск</div>
 
-    <button class="btn btn-primary" id="runBtn" disabled>▶ Run Detection</button>
-    <button class="btn btn-secondary" id="newBtn">+ New Job</button>
-    <button class="btn btn-danger" id="abortBtn" style="display:none">✕ Abort</button>
+    <button class="btn btn-primary" id="runBtn" disabled>▶ Запустить обнаружение</button>
+    <button class="btn btn-secondary" id="newBtn">+ Новая задача</button>
+    <button class="btn btn-danger" id="abortBtn" style="display:none">✕ Отмена</button>
 
     <div class="progress-wrap">
       <div class="progress-bar">
@@ -211,7 +211,7 @@
 <div class="main">
 
   <div class="topbar">
-    <span class="topbar-title">Preview</span>
+    <span class="topbar-title">Предпросмотр</span>
     <span class="topbar-file"  id="previewFilename"></span>
     <span class="topbar-count" id="detCount"></span>
   </div>
@@ -222,13 +222,13 @@
     <div class="panel" id="panel">
       <div class="preview-empty">
         <span class="preview-empty-icon">🛰</span>
-        Submit a job to see preview
+        Отправьте задачу для просмотра
       </div>
     </div>
 
     <!-- Jobs pane -->
     <div class="jobs-pane">
-      <div class="jobs-header">Jobs</div>
+      <div class="jobs-header">Задачи</div>
       <div class="jobs-list" id="jobsList"></div>
     </div>
 

@@ -5,9 +5,9 @@ const Jobs = (() => {
 
   function formatAge(ts) {
     const s = Math.floor(Date.now() / 1000 - ts);
-    if (s < 60)   return s + 's ago';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    return Math.floor(s / 3600) + 'h ago';
+    if (s < 60)   return s + 'с назад';
+    if (s < 3600) return Math.floor(s / 60) + 'м назад';
+    return Math.floor(s / 3600) + 'ч назад';
   }
 
   async function refresh() {
@@ -19,7 +19,7 @@ const Jobs = (() => {
     list.innerHTML = '';
 
     if (!jobs.length) {
-      list.innerHTML = '<div class="jobs-empty">No jobs yet</div>';
+      list.innerHTML = '<div class="jobs-empty">Задач пока нет</div>';
       return;
     }
 
@@ -45,14 +45,14 @@ const Jobs = (() => {
       '<div class="job-name" title="' + (job.filename || job.job_id) + '">' + (job.filename || job.job_id) + '</div>' +
       '<div class="job-meta">' +
         '<span>' + formatAge(job.created_at) + '</span>' +
-        '<span>TTL: ' + ttlLabel + '</span>' +
+        '<span>Срок: ' + ttlLabel + '</span>' +
       '</div>' +
       (isRun ? '<div class="job-mini-bar"><div class="job-mini-fill" style="width:' + progress + '%"></div></div>' : '') +
       '<div class="job-status-line s-' + job.status + '">' + statusText + '</div>' +
       '<div class="job-actions">' +
         (isDone ? '<button class="job-btn job-btn-dl" data-action="dl">↓ GeoJSON</button>' : '') +
-        '<button class="job-btn job-btn-pin" data-action="pin">' + (job.ttl_minutes === -1 ? 'Unpin' : 'Pin ∞') + '</button>' +
-        '<button class="job-btn job-btn-del" data-action="del">✕ Del</button>' +
+        '<button class="job-btn job-btn-pin" data-action="pin">' + (job.ttl_minutes === -1 ? 'Открепить' : 'Закрепить ∞') + '</button>' +
+        '<button class="job-btn job-btn-del" data-action="del">✕ Удалить</button>' +
       '</div>';
 
     card.querySelector('[data-action=del]').onclick = function(e) {
